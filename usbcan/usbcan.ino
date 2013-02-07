@@ -22,30 +22,26 @@
 #include "can.h"
 
 #define PIN_SS 10
+#define RXBUFF_SIZE 32
 
 CAN Can((byte)PIN_SS);
-
-void setup() {
-  Serial.begin(115200);
-  Can.sendCommand(CMD_RESET);
-  delay(500);
-  Can.setBitRate(125);
-  delay(10);
-  //digitalWrite(slaveSelectPin, LOW);  
-  //SPI.transfer(CMD_WRITE);
-  //SPI.transfer(REG_CANCTRL);
-  //SPI.transfer(0x07);
-  //digitalWrite(slaveSelectPin, HIGH);
-  Can.setMode(MODE_NORMAL);
-}
+byte rxbuff[RXBUFF_SIZE];
+byte rxbuffidx;
+word id;
+byte mode;
 
 byte buff[16];
-word id;
- 
-void loop()
+
+void cmdReceived(void)
 {
-  delay(80);
-  Can.PrintRegister(REG_CANSTAT, "STAT");
+  if(rxbuff[0]=='O') {
+    Can.setMode(MODE_NORMAL);
+    Serial.print("o\n");
+  } else if(rxbuff[0]=='C') {
+    Can.setMode(MODE_CONFIG);
+    Serial.print("c\n");
+  }
+  
   buff[0] = 0x00; // TXBxCTRL
   buff[1] = lowByte(id>>3);  // TXBxSIDH
   buff[2] = lowByte(id)<<5;// TXBxSIDL
@@ -57,24 +53,34 @@ void loop()
   Can.write(REG_TXB0, buff, 8);
   id++;
   if(id == 2048) { id = 0; }
-  //delay(10);
-  //PrintRegister(REG_TXB0, "TXB0");
-  Serial.println(id, HEX);
-  delay(10);
   Can.sendCommand(CMD_RTS0);  
-  delay(10);
   Can.read(REG_CNF3, buff, 3);
-  Serial.print("CNF1 = ");
-  Serial.print(buff[2]);
-  Serial.print("\nCNF2 = ");
-  Serial.print(buff[1]);
-  Serial.print("\nCNF3 = ");
-  Serial.print(buff[0]);
-  Serial.print("\n");
-  
-  //CAN.PrintRegister(REG_CNF1, "CNF1");
-  //CAN.PrintRegister(REG_CNF2, "CNF2");
-  //CAN.PrintRegister(REG_CNF3, "CNF3");
+}  
+
+
+void setup() {
+  Serial.begin(115200);
+  Can.sendCommand(CMD_RESET);
+  Can.setBitRate(125);
+  Can.setMode(MODE_NORMAL);
+}
+
+void loop()
+{
+  int ch;
+  if(Serial) {
+    if(Serial.available()) {
+      rxbuff[rxbuffidx] = Serial.read();
+      if(rxbuff[rxbuffidx] == '\n') {
+        cmdReceived();
+        rxbuffidx = 0;
+      } else {
+        rxbuffidx++;
+      }
+      if(rxbuffidx == RXBUFF_SIZE) rxbuffidx = 0;
+    }  
+  }
+  //delay(800);
 }
 
 
