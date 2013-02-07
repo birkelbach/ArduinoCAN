@@ -83,14 +83,15 @@
 #define MODE_NORMAL 0x00
 #define MODE_CONFIG 0x80
 
-class _CAN 
+class CAN 
 {
 private:
   byte mode;
   byte ss_pin;
 public:
-  void begin(byte pin);
+  CAN(byte pin);
   void write(byte reg, byte *buff, byte count);
+  void read(byte reg, byte *buff, byte count);
   void sendCommand(byte command);
   void setBitRate(int bitrate);
   void setMode(byte mode);
@@ -98,6 +99,6 @@ public:
   void PrintRegister(byte reg, char *str);
 };
 
-_CAN CAN;
+//_CAN CAN;
 
 #endif /* __CAN_H */

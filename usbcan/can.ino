@@ -19,19 +19,19 @@
 #include <SPI.h>
 #include "can.h"
 
-void _CAN::begin(byte pin)
+CAN::CAN(byte pin)
 {
   // set the Slave Select Pin as an output:
   ss_pin = pin;
   pinMode (ss_pin, OUTPUT);
   SPI.setBitOrder(MSBFIRST);
-  SPI.setClockDivider(SPI_CLOCK_DIV16);
+  SPI.setClockDivider(SPI_CLOCK_DIV4);
   // initialize SPI:
   SPI.begin();
   digitalWrite(ss_pin, HIGH);
 }
 
-void _CAN::write(byte reg, byte *buff, byte count)
+void CAN::write(byte reg, byte *buff, byte count)
 {
   byte n;
   digitalWrite(ss_pin, LOW);
@@ -43,14 +43,26 @@ void _CAN::write(byte reg, byte *buff, byte count)
   digitalWrite(ss_pin, HIGH);
 }
 
-void _CAN::sendCommand(byte command)
+void CAN::read(byte reg, byte *buff, byte count)
+{
+  byte n;
+  digitalWrite(ss_pin, LOW);
+  SPI.transfer(CMD_READ);
+  SPI.transfer(reg);
+  for(n = 0; n < count; n++) {
+    buff[n] = SPI.transfer(0x00);
+  }  
+  digitalWrite(ss_pin, HIGH);
+}
+
+void CAN::sendCommand(byte command)
 {
   digitalWrite(ss_pin, LOW);
   SPI.transfer(command);
   digitalWrite(ss_pin, HIGH);
 }
 
-void _CAN::setBitRate(int bitrate)
+void CAN::setBitRate(int bitrate)
 {
   byte buff[3];
   switch(bitrate) {
@@ -80,7 +92,7 @@ void _CAN::setBitRate(int bitrate)
   write(REG_CNF3, buff, 3);
 }
 
-void _CAN::setMode(byte mode)
+void CAN::setMode(byte mode)
 {
   byte buff;
   buff = mode;
@@ -88,7 +100,7 @@ void _CAN::setMode(byte mode)
 }
 
 /* This function is for testing only */
-void _CAN::PrintRegister(byte reg, char *str)
+void CAN::PrintRegister(byte reg, char *str)
 {
   byte bb;
   digitalWrite(ss_pin, LOW);
