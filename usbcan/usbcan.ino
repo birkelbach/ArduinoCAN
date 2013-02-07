@@ -41,7 +41,7 @@ void cmdReceived(void)
     Can.setMode(MODE_CONFIG);
     Serial.print("c\n");
   }
-  
+  // Just for testing...
   buff[0] = 0x00; // TXBxCTRL
   buff[1] = lowByte(id>>3);  // TXBxSIDH
   buff[2] = lowByte(id)<<5;// TXBxSIDL
@@ -62,7 +62,6 @@ void setup() {
   Serial.begin(115200);
   Can.sendCommand(CMD_RESET);
   Can.setBitRate(125);
-  Can.setMode(MODE_NORMAL);
 }
 
 void loop()

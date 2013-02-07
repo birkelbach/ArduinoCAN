@@ -1,2 +1,23 @@
-This is an Arduino sketch and circuit description that turns an Arduino into a generic USB/Serial
-to CAN converter.
+This is an Arduino sketch and circuit description that allows you to use an Arduino
+as a generic USB/Serial to CAN converter.
+
+There is a schemtic of the CAN Shield that can easily be built on a proto shield
+as well as the Arduino sketch.  To install the Arduino sketch just copy the whole
+'usbcan' directory into your Sketchbook directory.  Check the preferences of your
+Arduino software to determine where that is.  A better way to install it would be
+a symbolic link to this repository, that way any changes that you make will be
+reflected in both places.
+
+This device doesn't include all of the capabilities of CAN.  Since the primary
+focus of this effort is to lower the cost of entry for somebody to start doing
+CAN-FIX development we only included the features that were necessary for
+that purpose.  Remote and Extended frames were deliberately left out since they
+are not utilized in CAN-FIX at this point.
+
+The software is licensed under the GPL so if you use it for what you like.
+
+If you are curious what CAN-FIX is you can get all the details on the 
+MakerPlane forum here...
+
+http://makerplane.org/forum/viewforum.php?f=24
+
