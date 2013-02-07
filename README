@@ -21,3 +21,116 @@ MakerPlane forum here...
 
 http://makerplane.org/forum/viewforum.php?f=24
 
+To use the module you need to have a virtual serial port connection set up to your
+Arduino.  If you were able to load the sketch is likely that you have that working
+The general form of the command strings to the module are a single character
+command code followed by the data (if any) that is required by that command and
+then terminated with a linefeed <LF> (ASCII code 10 or 0x0A).
+
+The response from the interface will either be the lower case version of the command
+code or an '*' followed by an error code.
+
+* Command Codes
+
+Command            Code
+-------------------------
+Reset               K
+Set Bitrate         B
+Send Frame          W
+Open Port           O
+Close Port          C
+Set Mask            M
+Set Filter          F
+MCP2515 Raw Message Z
+Help                H
+
+
+* Error Codes
+
+1 Malformed command string
+2 Unknown bitrate
+3 Transmit buffers full
+4 Bad CAN identifier
+5 Bad mask or filter index
+6 Port must be open to send frames
+
+
+* Reset Command
+host      K<lf>
+response  k<lf>
+
+Sends a reset message to the MCP2515
+
+* Set Bitrate Command
+host      Bxxxx<lf>
+response  b<lf>
+
+x = the bitrate desired in kbps.  Currently the following are the only
+allowed recognized commands
+
+B125<lf>
+B250<lf>
+B500<lf>
+B1000<lf>
+
+* Send Frame Command
+host       Wiii:dddddddddddddddd<lf>
+response   w<lf>
+
+iii = the CAN identifier in hexidecimal format.  Each dd is a byte of data to be
+sent also in hexidecimal format if not data is to be sent the : should be 
+followed by the <lf>.  The response is sent with the data is loaded into the 
+transmit buffer.  If all the transmit buffers are full an error will be returned.
+
+* Open Port Command
+host       O<lf>
+response   o<lf>
+
+Puts the MCP2515 into Normal mode
+
+* Close Port Command
+host       C<lf>
+response   c<lf>
+
+Puts the MCP2515 into Configuration mode
+
+* Set Mask Command
+host       Mx:iii<lf>
+response   m<lf>
+
+Sets the mask given by 'x' in the MCP2515 to the value given by iii.  All in hexidecimal
+format.  There are only two masks 0 and 1.  See the MCP2515 datasheet for more information.
+
+* Set Filter Command
+host       Fx:iii<lf>
+response   f<lf>
+
+Sets the filter given by 'x' in the MCP2515 to the value given by iii.  All in hexidecimal
+format.  There are six filters.  0 and 1 are associated with mask 0 and 2-5 are associated
+with mask 1.  See the MCP2515 datasheet for more information.
+
+* MCP2515 Raw SPI Message Command
+host       Zdddddddddddd<lf>
+response   zdddddddddddd<lf>
+
+Sends the data given over the SPI port and responds with the data that is read from the
+SPI port.  No assumptions, validation or other logic is applied to this data.  This is
+for advanced users only and you should be familiar with how the MCP2515 SPI communication
+works.
+
+* Help Command
+host        H<lf>
+response    <screen full of helpful stuff>
+
+* CAN Frame Reception
+
+When the device receives a message that passes through the acceptance filters it is
+sent to the host with the following format...
+
+riii:dddddddddddddddd<lf>
+
+...where iii is the identifier of the CAN frame and each dd represents a byte of data.
+If there was no data the : would be followed by the <lf>
+
+No indication is given of which filter match occured.  See the MCP2515 datasheet for
+more information on how the accpetance filters work.
