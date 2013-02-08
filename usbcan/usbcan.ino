@@ -25,21 +25,71 @@
 #define RXBUFF_SIZE 32
 
 CAN Can((byte)PIN_SS);
-byte rxbuff[RXBUFF_SIZE];
+char rxbuff[RXBUFF_SIZE];
 byte rxbuffidx;
 word id;
-byte mode;
 
 byte buff[16];
 
+void sendHelp(void)
+{
+  Serial.print("CAN-FIXit USB to CAN Interface Adapter\n");
+  Serial.print("Version 1.0\n\n");
+  Serial.print("  Command            Code\n");
+  Serial.print("-------------------------\n");
+  Serial.print("  Reset               K\n");
+  Serial.print("  Set Bitrate         B\n");
+  Serial.print("  Send Frame          W\n");
+  Serial.print("  Open Port           O\n");
+  Serial.print("  Close Port          C\n");
+  Serial.print("  Set Mask            M\n");
+  Serial.print("  Set Filter          F\n");
+  Serial.print("  MCP2515 Raw Message Z\n");
+  Serial.print("  Help                H\n");
+}
+
+void setBitrate(void)
+{
+  byte mode;
+  mode = Can.getMode();
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_CONFIG);
+  }
+  if(strncmp(rxbuff, "B125\n", 5) == 0) {
+    Can.setBitRate(125);
+  } else if(strncmp(rxbuff, "B250\n", 5) == 0) {
+    Can.setBitRate(250);
+  } else if(strncmp(rxbuff, "B500\n", 5) == 0) {
+    Can.setBitRate(500);
+  } else if(strncmp(rxbuff, "B1000\n", 6) == 0) {
+    Can.setBitRate(500);
+  } else {
+    Serial.print("*2\n");
+    return;
+  }
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_NORMAL);
+  }
+  Serial.print("b\n");
+}
+
 void cmdReceived(void)
 {
-  if(rxbuff[0]=='O') {
+  if(rxbuff[0]=='O' && rxbuff[1] == '\n') {
     Can.setMode(MODE_NORMAL);
     Serial.print("o\n");
-  } else if(rxbuff[0]=='C') {
+  } else if(rxbuff[0]=='C' && rxbuff[1] == '\n') {
     Can.setMode(MODE_CONFIG);
     Serial.print("c\n");
+  } else if(rxbuff[0]=='K' && rxbuff[1] == '\n') {
+    Can.sendCommand(CMD_RESET);
+    Serial.print("k\n");
+  } else if(rxbuff[0] == 'B') {
+    setBitrate();
+  } else if(rxbuff[0] == 'H' && rxbuff[1] == '\n') {
+    sendHelp();
+  } else {
+    Serial.print("*1\n");
   }
   // Just for testing...
   buff[0] = 0x00; // TXBxCTRL

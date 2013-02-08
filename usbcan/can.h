@@ -95,6 +95,7 @@ public:
   void sendCommand(byte command);
   void setBitRate(int bitrate);
   void setMode(byte mode);
+  byte getMode(void);
   /* This function is for testing only */
   void PrintRegister(byte reg, char *str);
 };

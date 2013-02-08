@@ -99,6 +99,13 @@ void CAN::setMode(byte mode)
   write(REG_CANCTRL, &buff, 1);
 }
 
+byte CAN::getMode(void)
+{
+  byte buff;
+  read(REG_CANSTAT, &buff, 1);
+  return buff >> 5;
+}
+
 /* This function is for testing only */
 void CAN::PrintRegister(byte reg, char *str)
 {

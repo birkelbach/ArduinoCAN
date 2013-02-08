@@ -56,14 +56,14 @@ Help                H
 
 
 * Reset Command
-host      K<lf>
-response  k<lf>
+  host      K<lf>
+  response  k<lf>
 
 Sends a reset message to the MCP2515
 
 * Set Bitrate Command
-host      Bxxxx<lf>
-response  b<lf>
+  host      Bxxxx<lf>
+  response  b<lf>
 
 x = the bitrate desired in kbps.  Currently the following are the only
 allowed recognized commands
@@ -74,63 +74,65 @@ B500<lf>
 B1000<lf>
 
 * Send Frame Command
-host       Wiii:dddddddddddddddd<lf>
-response   w<lf>
+  host       Wiii:dddddddddddddddd<lf>
+  response   w<lf>
 
 iii = the CAN identifier in hexidecimal format.  Each dd is a byte of data to be
-sent also in hexidecimal format if not data is to be sent the : should be 
-followed by the <lf>.  The response is sent with the data is loaded into the 
+sent also in hexidecimal format if no data is to be sent the : should be 
+followed by the <lf>.  The response is sent when the data is loaded into the 
 transmit buffer.  If all the transmit buffers are full an error will be returned.
 
 * Open Port Command
-host       O<lf>
-response   o<lf>
+  host       O<lf>
+  response   o<lf>
 
 Puts the MCP2515 into Normal mode
 
 * Close Port Command
-host       C<lf>
-response   c<lf>
+  host       C<lf>
+  response   c<lf>
 
 Puts the MCP2515 into Configuration mode
 
 * Set Mask Command
-host       Mx:iii<lf>
-response   m<lf>
+  host       Mx:iii<lf>
+  response   m<lf>
 
-Sets the mask given by 'x' in the MCP2515 to the value given by iii.  All in hexidecimal
-format.  There are only two masks 0 and 1.  See the MCP2515 datasheet for more information.
+Sets the mask given by 'x' in the MCP2515 to the value given by iii. 
+All in hexidecimal format.  There are only two masks 0 and 1.  See the
+MCP2515 datasheet for more information.
 
 * Set Filter Command
-host       Fx:iii<lf>
-response   f<lf>
+  host       Fx:iii<lf>
+  response   f<lf>
 
-Sets the filter given by 'x' in the MCP2515 to the value given by iii.  All in hexidecimal
-format.  There are six filters.  0 and 1 are associated with mask 0 and 2-5 are associated
-with mask 1.  See the MCP2515 datasheet for more information.
+Sets the filter given by 'x' in the MCP2515 to the value given by iii.  All in
+hexidecimal format.  There are six filters.  0 and 1 are associated with
+mask 0 and 2-5 are associated with mask 1.  See the MCP2515 datasheet for more
+information.
 
 * MCP2515 Raw SPI Message Command
-host       Zdddddddddddd<lf>
-response   zdddddddddddd<lf>
+  host       Zdddddddddddd<lf>
+  response   zdddddddddddd<lf>
 
-Sends the data given over the SPI port and responds with the data that is read from the
-SPI port.  No assumptions, validation or other logic is applied to this data.  This is
-for advanced users only and you should be familiar with how the MCP2515 SPI communication
-works.
+Sends the data given over the SPI port and responds with the data that is read from
+the SPI port.  No assumptions, validation or other logic is applied to this data.
+This is for advanced users only and you should be familiar with how the MCP2515
+SPI communication works.
 
 * Help Command
-host        H<lf>
-response    <screen full of helpful stuff>
+  host        H<lf>
+  response    <screen full of helpful stuff>
 
 * CAN Frame Reception
 
-When the device receives a message that passes through the acceptance filters it is
-sent to the host with the following format...
+When the device receives a message that passes through the acceptance filters and is
+received it is sent to the host with the following format...
 
-riii:dddddddddddddddd<lf>
+  riii:dddddddddddddddd<lf>
 
-...where iii is the identifier of the CAN frame and each dd represents a byte of data.
-If there was no data the : would be followed by the <lf>
+...where iii is the identifier of the CAN frame and each dd represents a byte of
+data.  If there was no data the : would be followed by the <lf>
 
 No indication is given of which filter match occured.  See the MCP2515 datasheet for
-more information on how the accpetance filters work.
+more information on how the acceptance filters work.
