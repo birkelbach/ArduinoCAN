@@ -21,12 +21,14 @@
 
 #include <SPI.h>
 
-#define CMD_RESET  0xC0
-#define CMD_READ   0x03
-#define CMD_WRITE  0x02
-#define CMD_RTS0   0x81
-#define CMD_RTS1   0x82
-#define CMD_RTS2   0x84
+#define CMD_RESET    0xC0
+#define CMD_READ     0x03
+#define CMD_WRITE    0x02
+#define CMD_RXSTATUS 0xB0
+#define CMD_READRXB  0x90
+#define CMD_RTS0     0x81
+#define CMD_RTS1     0x82
+#define CMD_RTS2     0x84
 
 #define REG_CANCTRL 0x0F
 #define REG_CANSTAT 0x0E
@@ -37,6 +39,15 @@
 #define REG_TXB1    0x40
 #define REG_TXB2    0x50
 #define REG_TEC     0x1C
+#define REG_REC     0x1D
+#define REG_RXF0    0x00
+#define REG_RXF1    0x04
+#define REG_RXF2    0x08
+#define REG_RXF3    0x10
+#define REG_RXF4    0x14
+#define REG_RXF5    0x18
+#define REG_RXM0    0x20
+#define REG_RXM1    0x24
 
 #ifndef CAN_MHZ
 #define CAN_MHZ 16
@@ -96,6 +107,9 @@ public:
   void setBitRate(int bitrate);
   void setMode(byte mode);
   byte getMode(void);
+  byte getRxStatus(void);
+  byte readFrame(byte rxb, word *id, byte *data);
+  void writeFrame(word id, byte *data, byte len);
   /* This function is for testing only */
   void PrintRegister(byte reg, char *str);
 };

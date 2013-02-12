@@ -31,7 +31,7 @@ word id;
 
 byte buff[16];
 
-void sendHelp(void)
+inline void sendHelp(void)
 {
   Serial.print("CAN-FIXit USB to CAN Interface Adapter\n");
   Serial.print("Version 1.0\n\n");
@@ -48,7 +48,7 @@ void sendHelp(void)
   Serial.print("  Help                H\n");
 }
 
-void setBitrate(void)
+inline void setBitrate(void)
 {
   byte mode;
   mode = Can.getMode();
@@ -73,7 +73,111 @@ void setBitrate(void)
   Serial.print("b\n");
 }
 
-void cmdReceived(void)
+/* Get's the ID from the string.  The ids argument should
+   be a pointer to a four byte array that is assumed to be
+   SIDH, SIDL, EID8 and EID0 in that order.  The buff
+   argument should be a pointer to the first character
+   in rxbuff where the id, filter or mask is located
+   This function will fill those out ids and return 
+   0x00 if it all works, otherwise it'll return nonzero */
+byte getID(char *buff, byte *ids)
+{
+  long id;
+  if(buff[3]==':' || buff[3]=='\n') { //Standard frame
+    Serial.print("Standard Frame");
+    buff[3] = 0;
+    id = strtoul(&buff[0], NULL, 16);
+    ids[0] = (id & 0x00000FFFL) >> 3;
+    ids[1] = (id & 0x00000007L) << 5;
+    ids[2] = 0;
+    ids[3] = 0;
+    
+  } else if(buff[8]==':' || buff[8] == '\n') { //Extended frame
+    Serial.print("Extended Frame\n");
+    buff[8] = 0;
+    id = strtoul(&buff[0], NULL, 16);
+    ids[0] = (id & 0x00000FFFL) >> 3;
+    ids[1] = (id & 0x00000007L) << 5;
+    ids[1] |= 0x08 | (id >> 27);
+    ids[2] = id >> 19;
+    ids[3] = id >> 11;    
+  }
+  Serial.print(id, HEX);
+  Serial.print("\nSIDH ");
+  Serial.print(ids[0], HEX);
+  Serial.print("\n"); 
+  Serial.print("SIDL ");
+  Serial.print(ids[1], HEX);
+  Serial.print("\n"); 
+  Serial.print("EID8 ");
+  Serial.print(ids[2], HEX);
+  Serial.print("\n"); 
+  Serial.print("EID0 ");
+  Serial.print(ids[3], HEX);
+  Serial.print("\n"); 
+}
+
+inline void writeFrame(void)
+{
+  word id;
+  byte data[8], ids[4];
+  byte length;
+
+  if(getID(&rxbuff[1], ids)) {
+    Serial.print("*1\n");
+    return;
+  }
+  if(Can.getMode() != MODE_NORMAL) {
+    Serial.print("*6\n");
+  } else {
+    ;
+  }  
+  Serial.print("w\n");
+}
+
+inline void writeFilter(void)
+{
+  byte mode, reg, ids[4];
+  word filter;
+
+  if(getID(&rxbuff[2], ids)) {
+    Serial.print("*1\n");
+    return;
+  }
+  mode = Can.getMode();
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_CONFIG);
+  }
+
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_NORMAL);
+  }
+  Serial.print("f\n");
+}
+
+inline void writeMask(void)
+{
+  byte mode, ids[4];
+  
+  if(getID(&rxbuff[2], ids)) {
+    Serial.print("*1\n");
+    return;
+  } 
+  mode = Can.getMode();
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_CONFIG);
+  }
+  
+  
+  if(mode == MODE_NORMAL) {
+    Can.setMode(MODE_NORMAL);
+  }
+  Serial.print("m\n");
+}
+
+/* Called if a full sentence has been received.  Determines
+   what to do with the message */
+inline void cmdReceived(void)
 {
   if(rxbuff[0]=='O' && rxbuff[1] == '\n') {
     Can.setMode(MODE_NORMAL);
@@ -86,6 +190,12 @@ void cmdReceived(void)
     Serial.print("k\n");
   } else if(rxbuff[0] == 'B') {
     setBitrate();
+  } else if(rxbuff[0] == 'W') {
+    writeFrame();
+  } else if(rxbuff[0] == 'F') {
+    writeFilter();
+  } else if(rxbuff[0] == 'M') {
+    writeMask();
   } else if(rxbuff[0] == 'H' && rxbuff[1] == '\n') {
     sendHelp();
   } else {
@@ -107,6 +217,20 @@ void cmdReceived(void)
   Can.read(REG_CNF3, buff, 3);
 }  
 
+/* Prints a received frame to serial port in the proper format */
+void printFrame(word cid, byte *data, byte length)
+{
+  byte n;
+  Serial.print("r");
+  Serial.print(cid, HEX);
+  Serial.print(":");
+  for(n=0;n<length;n++) {
+    if(data[n]<0x10) Serial.print("0");
+    Serial.print(data[n], HEX);
+  }
+  Serial.print("\n");
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -117,6 +241,11 @@ void setup() {
 void loop()
 {
   int ch;
+  byte buff[13];
+  byte result;
+  byte length;
+  word cid;
+  
   if(Serial) {
     if(Serial.available()) {
       rxbuff[rxbuffidx] = Serial.read();
@@ -129,7 +258,18 @@ void loop()
       if(rxbuffidx == RXBUFF_SIZE) rxbuffidx = 0;
     }  
   }
-  //delay(800);
+  /* Thgis is where we check to see if we have received a frame
+     on one of the Receive buffers.  */
+  if(result = Can.getRxStatus()) {
+    if(result & 0x40) {
+      length = Can.readFrame(0, &cid, buff);
+      printFrame(cid, buff, length);
+    }
+    if(result & 0x80) {
+      length = Can.readFrame(1, &cid, buff);
+      printFrame(cid, buff, length);
+    }
+  }
 }
 
 

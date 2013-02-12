@@ -106,7 +106,42 @@ byte CAN::getMode(void)
   return buff >> 5;
 }
 
+byte CAN::getRxStatus(void)
+{
+  byte result;
+  digitalWrite(ss_pin, LOW);
+  SPI.transfer(CMD_RXSTATUS);
+  result = SPI.transfer(0x00);
+  digitalWrite(ss_pin, HIGH);
+  return result;
+}
+
+byte CAN::readFrame(byte rxb, word *id, byte *data)
+{
+  byte sidl, sidh, n;
+  byte length;
+  digitalWrite(ss_pin, LOW);
+  SPI.transfer(CMD_READRXB | (rxb<<2));
+  sidh = SPI.transfer(0x00); //SIDH
+  sidl = SPI.transfer(0x00); //SIDL
+  SPI.transfer(0x00);        //EIDH
+  SPI.transfer(0x00);        //EIDL
+  length = SPI.transfer(0x00);  //DLC
+  for(n=0; n<length; n++) {
+    data[n] = SPI.transfer(0x00);
+  }
+  digitalWrite(ss_pin, HIGH);
+  *id = ((sidh << 8) | sidl)>>5;
+  return length;
+}
+
+void CAN::writeFrame(word id, byte *data, byte len)
+{
+  ;
+}
+
 /* This function is for testing only */
+/*
 void CAN::PrintRegister(byte reg, char *str)
 {
   byte bb;
@@ -119,3 +154,4 @@ void CAN::PrintRegister(byte reg, char *str)
   Serial.print(" = ");
   Serial.println(bb, HEX);
 } 
+*/
