@@ -74,10 +74,11 @@ B500<lf>
 B1000<lf>
 
 * Send Frame Command
-  host       Wiii:dddddddddddddddd<lf>
+  host (standard)  Wiii:dddddddddddddddd<lf>
+  host (extended)  Wiiiiiiii:dddddddddddddddd<lf>
   response   w<lf>
 
-iii = the CAN identifier in hexidecimal format.  Each dd is a byte of data to be
+i..i = the CAN identifier in hexidecimal format.  Each dd is a byte of data to be
 sent also in hexidecimal format if no data is to be sent the : should be 
 followed by the <lf>.  The response is sent when the data is loaded into the 
 transmit buffer.  If all the transmit buffers are full an error will be returned.
@@ -95,18 +96,20 @@ Puts the MCP2515 into Normal mode
 Puts the MCP2515 into Configuration mode
 
 * Set Mask Command
-  host       Mx:iii<lf>
+  host (standard)  Mx:iii<lf>
+  host (extended)  Mx:iiiiiiii<lf>
   response   m<lf>
 
-Sets the mask given by 'x' in the MCP2515 to the value given by iii. 
+Sets the mask given by 'x' in the MCP2515 to the value given by i..i. 
 All in hexidecimal format.  There are only two masks 0 and 1.  See the
 MCP2515 datasheet for more information.
 
 * Set Filter Command
-  host       Fx:iii<lf>
+  host (standard)  Fx:iii<lf>
+  host (extended)  Fx:iiiiiiii<lf>
   response   f<lf>
 
-Sets the filter given by 'x' in the MCP2515 to the value given by iii.  All in
+Sets the filter given by 'x' in the MCP2515 to the value given by i..i.  All in
 hexidecimal format.  There are six filters.  0 and 1 are associated with
 mask 0 and 2-5 are associated with mask 1.  See the MCP2515 datasheet for more
 information.
@@ -129,9 +132,10 @@ SPI communication works.
 When the device receives a message that passes through the acceptance filters and is
 received it is sent to the host with the following format...
 
-  riii:dddddddddddddddd<lf>
+  (standard) riii:dddddddddddddddd<lf>
+  (extended) riiiiiiii:dddddddddddddddd<lf>
 
-...where iii is the identifier of the CAN frame and each dd represents a byte of
+...where i..i is the identifier of the CAN frame and each dd represents a byte of
 data.  If there was no data the : would be followed by the <lf>
 
 No indication is given of which filter match occured.  See the MCP2515 datasheet for
