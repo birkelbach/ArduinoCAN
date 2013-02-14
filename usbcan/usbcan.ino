@@ -218,15 +218,18 @@ inline void cmdReceived(void)
 }  
 
 /* Prints a received frame to serial port in the proper format */
-void printFrame(word cid, byte *data, byte length)
+void printFrame(CanFrame frame)
 {
   byte n;
+  char str[9];
   Serial.print("r");
-  Serial.print(cid, HEX);
+  if(frame.eid) sprintf(str, "%08lX", frame.id);
+  else          sprintf(str, "%03X", frame.id); 
+  Serial.print(str);
   Serial.print(":");
-  for(n=0;n<length;n++) {
-    if(data[n]<0x10) Serial.print("0");
-    Serial.print(data[n], HEX);
+  for(n=0;n<frame.length;n++) {
+    if(frame.data[n]<0x10) Serial.print("0");
+    Serial.print(frame.data[n], HEX);
   }
   Serial.print("\n");
 }
@@ -244,7 +247,8 @@ void loop()
   byte buff[13];
   byte result;
   byte length;
-  word cid;
+  unsigned long cid;
+  CanFrame frame;
   
   if(Serial) {
     if(Serial.available()) {
@@ -262,12 +266,12 @@ void loop()
      on one of the Receive buffers.  */
   if(result = Can.getRxStatus()) {
     if(result & 0x40) {
-      length = Can.readFrame(0, &cid, buff);
-      printFrame(cid, buff, length);
+      frame = Can.readFrame(0);
+      printFrame(frame);
     }
     if(result & 0x80) {
-      length = Can.readFrame(1, &cid, buff);
-      printFrame(cid, buff, length);
+      frame = Can.readFrame(1);
+      printFrame(frame);
     }
   }
 }

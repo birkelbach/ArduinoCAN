@@ -94,6 +94,14 @@
 #define MODE_NORMAL 0x00
 #define MODE_CONFIG 0x80
 
+typedef struct {
+  unsigned long id;
+  byte eid;
+  byte length;
+  byte data[8];
+} CanFrame;
+  
+
 class CAN 
 {
 private:
@@ -108,7 +116,7 @@ public:
   void setMode(byte mode);
   byte getMode(void);
   byte getRxStatus(void);
-  byte readFrame(byte rxb, word *id, byte *data);
+  CanFrame readFrame(byte rxb);
   void writeFrame(word id, byte *data, byte len);
   /* This function is for testing only */
   void PrintRegister(byte reg, char *str);

@@ -116,23 +116,33 @@ byte CAN::getRxStatus(void)
   return result;
 }
 
-byte CAN::readFrame(byte rxb, word *id, byte *data)
+CanFrame CAN::readFrame(byte rxb)
 {
-  byte sidl, sidh, n;
-  byte length;
+  byte sidl, sidh, eid0, eid8, n;
+  CanFrame frame;
   digitalWrite(ss_pin, LOW);
   SPI.transfer(CMD_READRXB | (rxb<<2));
   sidh = SPI.transfer(0x00); //SIDH
   sidl = SPI.transfer(0x00); //SIDL
-  SPI.transfer(0x00);        //EIDH
-  SPI.transfer(0x00);        //EIDL
-  length = SPI.transfer(0x00);  //DLC
-  for(n=0; n<length; n++) {
-    data[n] = SPI.transfer(0x00);
+  eid8 = SPI.transfer(0x00); //EID8
+  eid0 = SPI.transfer(0x00); //EID0
+  frame.length = SPI.transfer(0x00);  //DLC
+  for(n=0; n<frame.length; n++) {
+    frame.data[n] = SPI.transfer(0x00);
   }
   digitalWrite(ss_pin, HIGH);
-  *id = ((sidh << 8) | sidl)>>5;
-  return length;
+  if(sidl & 0x08) {   // Extended Identifier
+    sidl &= 0xE3;     // Clear the EXIDE bit
+    frame.id = ((unsigned long)sidh << 21);
+    frame.id |= ((unsigned long)sidl & 0xE0)<<13;
+    frame.id |= ((unsigned long)sidl & 0x03)<<16;
+    frame.id |= ((unsigned long)eid8<<8) | (unsigned long)eid0;
+    frame.eid = 0x01;
+  } else {
+    frame.id = (sidh<<3) | (sidl>>5);
+    frame.eid = 0x00;
+  }
+  return frame;
 }
 
 void CAN::writeFrame(word id, byte *data, byte len)
