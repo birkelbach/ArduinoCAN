@@ -117,7 +117,7 @@ public:
   byte getMode(void);
   byte getRxStatus(void);
   CanFrame readFrame(byte rxb);
-  void writeFrame(word id, byte *data, byte len);
+  void writeFrame(CanFrame frame);
   /* This function is for testing only */
   void PrintRegister(byte reg, char *str);
 };

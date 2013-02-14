@@ -73,35 +73,38 @@ inline void setBitrate(void)
   Serial.print("b\n");
 }
 
-/* Get's the ID from the string.  The ids argument should
-   be a pointer to a four byte array that is assumed to be
-   SIDH, SIDL, EID8 and EID0 in that order.  The buff
-   argument should be a pointer to the first character
-   in rxbuff where the id, filter or mask is located
-   This function will fill those out ids and return 
-   0x00 if it all works, otherwise it'll return nonzero */
-byte getID(char *buff, byte *ids)
+/* Get's the ID from the string.  Returns 0x00 on
+   success or the error character that should be
+   sent after the '*' if failure */
+
+byte getID(char *buff, CanFrame *frame)
 {
-  long id;
   if(buff[3]==':' || buff[3]=='\n') { //Standard frame
-    Serial.print("Standard Frame");
+    Serial.print("Standard Frame\n");
     buff[3] = 0;
-    id = strtoul(&buff[0], NULL, 16);
-    ids[0] = (id & 0x00000FFFL) >> 3;
-    ids[1] = (id & 0x00000007L) << 5;
-    ids[2] = 0;
-    ids[3] = 0;
+    frame->id = strtoul(&buff[0], NULL, 16);
+    frame->eid = 0x00;
+    if(frame->id > 0x1FF) return '4';
+    //ids[0] = (id & 0x00000FFFL) >> 3;
+    //ids[1] = (id & 0x00000007L) << 5;
+    //ids[2] = 0;
+    //ids[3] = 0;
     
   } else if(buff[8]==':' || buff[8] == '\n') { //Extended frame
     Serial.print("Extended Frame\n");
     buff[8] = 0;
-    id = strtoul(&buff[0], NULL, 16);
-    ids[0] = (id & 0x00000FFFL) >> 3;
-    ids[1] = (id & 0x00000007L) << 5;
-    ids[1] |= 0x08 | (id >> 27);
-    ids[2] = id >> 19;
-    ids[3] = id >> 11;    
+    frame->id = strtoul(&buff[0], NULL, 16);
+    frame->eid = 0x01;
+    if(frame->id > 0x1FFFFFFF) return '4';
+    //ids[0] = (id & 0x00000FFFL) >> 3;
+    //ids[1] = (id & 0x00000007L) << 5;
+    //ids[1] |= 0x08 | (id >> 27);
+    //ids[2] = id >> 19;
+    //ids[3] = id >> 11;    
+  } else {
+    return '1';
   }
+  /*
   Serial.print(id, HEX);
   Serial.print("\nSIDH ");
   Serial.print(ids[0], HEX);
@@ -114,34 +117,41 @@ byte getID(char *buff, byte *ids)
   Serial.print("\n"); 
   Serial.print("EID0 ");
   Serial.print(ids[3], HEX);
-  Serial.print("\n"); 
+  Serial.print("\n");
+  */
+  return 0x00; 
 }
 
 inline void writeFrame(void)
 {
-  word id;
-  byte data[8], ids[4];
-  byte length;
+  CanFrame frame;
+  char ch;
 
-  if(getID(&rxbuff[1], ids)) {
-    Serial.print("*1\n");
+  if(ch = getID(&rxbuff[1], &frame)) {
+    Serial.print("*");
+    Serial.print(ch);
+    Serial.print("\n");
     return;
   }
   if(Can.getMode() != MODE_NORMAL) {
     Serial.print("*6\n");
   } else {
-    ;
+    Serial.print("Write Frame\n");
+    Serial.print(frame.id, HEX);
   }  
   Serial.print("w\n");
 }
 
 inline void writeFilter(void)
 {
-  byte mode, reg, ids[4];
-  word filter;
+  CanFrame frame;
+  char ch;
+  byte mode, reg;
 
-  if(getID(&rxbuff[2], ids)) {
-    Serial.print("*1\n");
+  if(ch = getID(&rxbuff[2], &frame)) {
+    Serial.print("*");
+    Serial.print(ch);
+    Serial.print("\n");
     return;
   }
   mode = Can.getMode();
@@ -157,10 +167,14 @@ inline void writeFilter(void)
 
 inline void writeMask(void)
 {
-  byte mode, ids[4];
+  CanFrame frame;
+  char ch;
+  byte mode;
   
-  if(getID(&rxbuff[2], ids)) {
-    Serial.print("*1\n");
+  if(ch = getID(&rxbuff[2], &frame)) {
+    Serial.print("*");
+    Serial.print(ch);
+    Serial.print("\n");
     return;
   } 
   mode = Can.getMode();

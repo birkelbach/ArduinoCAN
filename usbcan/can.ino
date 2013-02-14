@@ -145,7 +145,7 @@ CanFrame CAN::readFrame(byte rxb)
   return frame;
 }
 
-void CAN::writeFrame(word id, byte *data, byte len)
+void CAN::writeFrame(CanFrame frame)
 {
   ;
 }
