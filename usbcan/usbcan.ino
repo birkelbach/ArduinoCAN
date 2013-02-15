@@ -17,11 +17,16 @@
  */
 
 #include <SPI.h>
+/* If the sheild has a 16Mhz Oscillator comment the
+   the following line.  This must come before the
+   inclusion of "can.h".  See can.h for details */
 #define CAN_MHZ 20
+/* This can be changed if the slave select output
+   is a different pin than 10 */
+#define PIN_SS 10
 
 #include "can.h"
 
-#define PIN_SS 10
 #define RXBUFF_SIZE 32
 
 CAN Can((byte)PIN_SS);
@@ -80,66 +85,73 @@ inline void setBitrate(void)
 byte getID(char *buff, CanFrame *frame)
 {
   if(buff[3]==':' || buff[3]=='\n') { //Standard frame
-    Serial.print("Standard Frame\n");
     buff[3] = 0;
     frame->id = strtoul(&buff[0], NULL, 16);
     frame->eid = 0x00;
     if(frame->id > 0x1FF) return '4';
-    //ids[0] = (id & 0x00000FFFL) >> 3;
-    //ids[1] = (id & 0x00000007L) << 5;
-    //ids[2] = 0;
-    //ids[3] = 0;
-    
   } else if(buff[8]==':' || buff[8] == '\n') { //Extended frame
-    Serial.print("Extended Frame\n");
     buff[8] = 0;
     frame->id = strtoul(&buff[0], NULL, 16);
     frame->eid = 0x01;
     if(frame->id > 0x1FFFFFFF) return '4';
-    //ids[0] = (id & 0x00000FFFL) >> 3;
-    //ids[1] = (id & 0x00000007L) << 5;
-    //ids[1] |= 0x08 | (id >> 27);
-    //ids[2] = id >> 19;
-    //ids[3] = id >> 11;    
   } else {
     return '1';
   }
-  /*
-  Serial.print(id, HEX);
-  Serial.print("\nSIDH ");
-  Serial.print(ids[0], HEX);
-  Serial.print("\n"); 
-  Serial.print("SIDL ");
-  Serial.print(ids[1], HEX);
-  Serial.print("\n"); 
-  Serial.print("EID8 ");
-  Serial.print(ids[2], HEX);
-  Serial.print("\n"); 
-  Serial.print("EID0 ");
-  Serial.print(ids[3], HEX);
-  Serial.print("\n");
-  */
   return 0x00; 
 }
 
 inline void writeFrame(void)
 {
   CanFrame frame;
-  char ch;
+  char chh, chl;
+  byte n;
 
-  if(ch = getID(&rxbuff[1], &frame)) {
+  if(chh = getID(&rxbuff[1], &frame)) {
     Serial.print("*");
-    Serial.print(ch);
+    Serial.print(chh);
     Serial.print("\n");
     return;
   }
   if(Can.getMode() != MODE_NORMAL) {
     Serial.print("*6\n");
   } else {
-    Serial.print("Write Frame\n");
-    Serial.print(frame.id, HEX);
-  }  
-  Serial.print("w\n");
+    frame.length=0;
+    n = 5 + (5 * frame.eid); //Set to the first data char in buffer
+    while(rxbuff[n] != '\n') {
+      if(rxbuff[n+1]=='\n') { // Not an even number of data characters
+        Serial.print("*1\n");
+        return;
+      }
+      chh = toupper(rxbuff[n]);
+      chl = toupper(rxbuff[n+1]);
+      if( ((chh<'0' || chh>'9') && (chh<'A' || chh>'F')) ||
+          ((chl<'0' || chl>'9') && (chl<'A' || chl>'F'))) {
+            Serial.print("*1\n");
+            return;
+      }
+      if(chh > '9') {//It's a character
+          frame.data[frame.length] = (chh - 55)<<4;
+      } else {
+          frame.data[frame.length] = (chh - '0')<<4;
+      }
+      if(chl > '9') {
+          frame.data[frame.length] |= chl - 55;
+      } else {
+          frame.data[frame.length] |= chl - '0';
+      }
+      frame.length++;
+      if(frame.length > 8) {
+        Serial.print("*1\n");
+        return;
+      }
+      n+=2;
+    }
+    if(Can.writeFrame(frame)) {
+      Serial.print("*3\n");
+    } else {  
+      Serial.print("w\n");
+    }
+  }
 }
 
 inline void writeFilter(void)
@@ -215,20 +227,6 @@ inline void cmdReceived(void)
   } else {
     Serial.print("*1\n");
   }
-  // Just for testing...
-  buff[0] = 0x00; // TXBxCTRL
-  buff[1] = lowByte(id>>3);  // TXBxSIDH
-  buff[2] = lowByte(id)<<5;// TXBxSIDL
-  buff[3] = 0x00;
-  buff[4] = 0x00;
-  buff[5] = 0x02; // TXBxDLC
-  buff[6]++;      // TXBxD0
-  buff[7] = buff[6]+1;// TXBxD1
-  Can.write(REG_TXB0, buff, 8);
-  id++;
-  if(id == 2048) { id = 0; }
-  Can.sendCommand(CMD_RTS0);  
-  Can.read(REG_CNF3, buff, 3);
 }  
 
 /* Prints a received frame to serial port in the proper format */
@@ -273,7 +271,7 @@ void loop()
       } else {
         rxbuffidx++;
       }
-      if(rxbuffidx == RXBUFF_SIZE) rxbuffidx = 0;
+      if(rxbuffidx >= RXBUFF_SIZE) rxbuffidx = 0;
     }  
   }
   /* Thgis is where we check to see if we have received a frame

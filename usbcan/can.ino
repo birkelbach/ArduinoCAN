@@ -145,23 +145,40 @@ CanFrame CAN::readFrame(byte rxb)
   return frame;
 }
 
-void CAN::writeFrame(CanFrame frame)
+byte CAN::writeFrame(CanFrame frame)
 {
-  ;
+  byte result, i, j;
+  byte eid0, eid8, sidl, sidh;
+  byte ctrl[] = {REG_TXB0CTRL, REG_TXB1CTRL, REG_TXB2CTRL};
+
+  for(i=0; i<3; i++) {  //Loop through all three TX buffers
+     read(ctrl[i], &result, 1); //Read the TXBxCTRL register
+     if(!(result & TXREQ)) {    //If the TXREQ bit is not set then...
+       if(frame.eid) {
+         eid0 = frame.id;        //Assemble the buffers
+         eid8 = frame.id >>8;
+         sidl = ((frame.id>>16) & 0x03) | ((frame.id>>13) & 0xE0) | 0x08;
+         sidh = frame.id>>21;
+       } else {
+         sidl = frame.id<<5;
+         sidh = frame.id>>3;
+       }
+         
+       digitalWrite(ss_pin, LOW);
+       SPI.transfer(CMD_WRITETXB | (i<<1));   //Write the buffers
+       SPI.transfer(sidh); //SIDH
+       SPI.transfer(sidl); //SIDL
+       SPI.transfer(eid8); //EID8
+       SPI.transfer(eid0); //EID0
+       SPI.transfer(frame.length);  //DLC
+       for(j=0; j<frame.length; j++) {
+          SPI.transfer(frame.data[j]);
+       }
+       digitalWrite(ss_pin, HIGH);  // Might need delay here
+       sendCommand(CMD_RTS | (0x01 << i));
+       return 0;
+     }
+  }   
+  return -1;  //All the buffers are full
 }
 
-/* This function is for testing only */
-/*
-void CAN::PrintRegister(byte reg, char *str)
-{
-  byte bb;
-  digitalWrite(ss_pin, LOW);
-  SPI.transfer(CMD_READ); // Read
-  SPI.transfer(reg); 
-  bb = SPI.transfer(0x00);
-  digitalWrite(ss_pin, HIGH);
-  Serial.print(str);  
-  Serial.print(" = ");
-  Serial.println(bb, HEX);
-} 
-*/
