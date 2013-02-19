@@ -42,14 +42,14 @@
 #define REG_TXB2CTRL  0x50
 #define REG_TEC       0x1C
 #define REG_REC       0x1D
-#define REG_RXF0      0x00
-#define REG_RXF1      0x04
-#define REG_RXF2      0x08
-#define REG_RXF3      0x10
-#define REG_RXF4      0x14
-#define REG_RXF5      0x18
-#define REG_RXM0      0x20
-#define REG_RXM1      0x24
+#define REG_RXF0SIDH  0x00
+#define REG_RXF1SIDH  0x04
+#define REG_RXF2SIDH  0x08
+#define REG_RXF3SIDH  0x10
+#define REG_RXF4SIDH  0x14
+#define REG_RXF5SIDH  0x18
+#define REG_RXM0SIDH  0x20
+#define REG_RXM1SIDH  0x24
 
 //Bits
 #define TXREQ         0x08

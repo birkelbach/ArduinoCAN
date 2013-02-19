@@ -159,8 +159,9 @@ inline void writeFilter(void)
   CanFrame frame;
   char ch;
   byte mode, reg;
-
-  if(ch = getID(&rxbuff[2], &frame)) {
+  byte buff[4];
+  
+  if(ch = getID(&rxbuff[3], &frame)) {
     Serial.print("*");
     Serial.print(ch);
     Serial.print("\n");
@@ -169,6 +170,25 @@ inline void writeFilter(void)
   mode = Can.getMode();
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_CONFIG);
+  }
+  ch = rxbuff[1] - '0';
+  if(ch > 5) {
+    Serial.print("*1\n");
+    return;
+  }
+  if(ch < 3) reg = ch << 2;
+  else       reg = (ch - 3) <<2 | 0x10;
+  Serial.println(reg, HEX);
+  if(frame.eid) {
+    buff[3] = frame.id;        //Assemble the buffers
+    buff[2] = frame.id >>8;
+    buff[1] = ((frame.id>>16) & 0x03) | ((frame.id>>13) & 0xE0) | 0x08;
+    buff[0] = frame.id>>21;
+    Can.write(reg, buff, 4);
+  } else {
+    buff[1] = frame.id<<5;
+    buff[0] = frame.id>>3;
+    Can.write(reg, buff, 2);
   }
 
   if(mode == MODE_NORMAL) {
@@ -181,9 +201,9 @@ inline void writeMask(void)
 {
   CanFrame frame;
   char ch;
-  byte mode;
-  
-  if(ch = getID(&rxbuff[2], &frame)) {
+  byte mode, reg;
+  byte ids[4];
+  if(ch = getID(&rxbuff[3], &frame)) {
     Serial.print("*");
     Serial.print(ch);
     Serial.print("\n");
@@ -193,7 +213,24 @@ inline void writeMask(void)
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_CONFIG);
   }
-  
+  if(rxbuff[1] == '0')      reg = REG_RXM0SIDH;
+  else if(rxbuff[1] == '1') reg = REG_RXM1SIDH;
+  else {
+    Serial.print("*1\n");
+    return;
+  }
+  if(frame.eid) {
+    buff[3] = frame.id;        //Assemble the buffers
+    buff[2] = frame.id >>8;
+    buff[1] = ((frame.id>>16) & 0x03) | ((frame.id>>13) & 0xE0) | 0x08;
+    buff[0] = frame.id>>21;
+    Can.write(reg, buff, 4);
+  } else {
+    buff[1] = frame.id<<5;
+    buff[0] = frame.id>>3;
+    Can.write(reg, buff, 2);
+  }
+
   
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_NORMAL);
