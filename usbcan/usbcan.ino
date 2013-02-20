@@ -88,12 +88,12 @@ byte getID(char *buff, CanFrame *frame)
     buff[3] = 0;
     frame->id = strtoul(&buff[0], NULL, 16);
     frame->eid = 0x00;
-    if(frame->id > 0x1FF) return '4';
+    if(frame->id > 0x7FF) return '4';
   } else if(buff[8]==':' || buff[8] == '\n') { //Extended frame
     buff[8] = 0;
     frame->id = strtoul(&buff[0], NULL, 16);
     frame->eid = 0x01;
-    if(frame->id > 0x1FFFFFFF) return '4';
+    if(frame->id > 0x1FFFFFFFL) return '4';
   } else {
     return '1';
   }
@@ -202,7 +202,6 @@ inline void writeMask(void)
   CanFrame frame;
   char ch;
   byte mode, reg;
-  byte ids[4];
   if(ch = getID(&rxbuff[3], &frame)) {
     Serial.print("*");
     Serial.print(ch);
@@ -292,11 +291,7 @@ void setup() {
 
 void loop()
 {
-  int ch;
-  byte buff[13];
   byte result;
-  byte length;
-  unsigned long cid;
   CanFrame frame;
   
   if(Serial) {
