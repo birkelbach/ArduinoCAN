@@ -122,6 +122,11 @@ inline void writeFrame(void)
         Serial.print("*1\n");
         return;
       }
+      if(frame.length == 8) {
+        Serial.print("*1\n");
+        return;
+      }
+      
       chh = toupper(rxbuff[n]);
       chl = toupper(rxbuff[n+1]);
       if( ((chh<'0' || chh>'9') && (chh<'A' || chh>'F')) ||
@@ -140,10 +145,6 @@ inline void writeFrame(void)
           frame.data[frame.length] |= chl - '0';
       }
       frame.length++;
-      if(frame.length > 8) {
-        Serial.print("*1\n");
-        return;
-      }
       n+=2;
     }
     if(Can.writeFrame(frame)) {
