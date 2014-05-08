@@ -20,7 +20,7 @@
 /* If the sheild has a 16Mhz Oscillator comment the
    the following line.  This must come before the
    inclusion of "can.h".  See can.h for details */
-#define CAN_MHZ 20
+//#define CAN_MHZ 20
 /* This can be changed if the slave select output
    is a different pin than 10 */
 #define PIN_SS 10
@@ -28,30 +28,65 @@
 #include "can.h"
 
 #define RXBUFF_SIZE 32
+#define TXBUFF_SIZE 32
+#define CANBUFF_SIZE 32
 
 CAN Can((byte)PIN_SS);
 char rxbuff[RXBUFF_SIZE];
 byte rxbuffidx;
+char txbuff[TXBUFF_SIZE];
+byte txbuffidx;
+byte txbufflen;
+CanFrame canbuff[CANBUFF_SIZE];
+byte canidx;
 word id;
 
 byte buff[16];
 
+//#define FULL_HELP 1
+char *helpString[] = {"CAN-FIXit USB to CAN Interface Adapter\n",
+                               "Version 1.0\n\n",
+#ifdef FULL_HELP
+                               "  Command            Code\n",
+                               "-------------------------\n",
+                               "  Reset               K\n",
+                               "  Set Bitrate         B\n",
+                               "  Send Frame          W\n",
+                               "  Open Port           O\n",
+                               "  Close Port          C\n",
+                               "  Set Mask            M\n",
+                               "  Set Filter          F\n",
+                               "  MCP2515 Raw Message Z\n",
+                               "  Help                H\n",
+#endif 
+                               NULL};
+
+void sendString(char *str)
+{
+  int n;
+  while(str[n] != 0) {
+    Serial.write(str[n]);
+    n++;
+    //TODO: Check for new CAN frame at every character
+  }
+}
+
+void sendByte(char ch)
+{
+  Serial.write(ch);
+  //TODO: Check for new CAN frame at every character
+}  
+
+                               
 inline void sendHelp(void)
 {
-  Serial.print("CAN-FIXit USB to CAN Interface Adapter\n");
-  Serial.print("Version 1.0\n\n");
-  Serial.print("  Command            Code\n");
-  Serial.print("-------------------------\n");
-  Serial.print("  Reset               K\n");
-  Serial.print("  Set Bitrate         B\n");
-  Serial.print("  Send Frame          W\n");
-  Serial.print("  Open Port           O\n");
-  Serial.print("  Close Port          C\n");
-  Serial.print("  Set Mask            M\n");
-  Serial.print("  Set Filter          F\n");
-  Serial.print("  MCP2515 Raw Message Z\n");
-  Serial.print("  Help                H\n");
+  byte index = 0;
+  while(helpString[index] != NULL) {
+    sendString(helpString[index]);
+    index++;
+  }
 }
+
 
 inline void setBitrate(void)
 {
@@ -69,13 +104,13 @@ inline void setBitrate(void)
   } else if(strncmp(rxbuff, "B1000\n", 6) == 0) {
     Can.setBitRate(500);
   } else {
-    Serial.print("*2\n");
+    sendString("*2\n");
     return;
   }
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_NORMAL);
   }
-  Serial.print("b\n");
+  sendString("b\n");
 }
 
 /* Get's the ID from the string.  Returns 0x00 on
@@ -107,23 +142,23 @@ inline void writeFrame(void)
   byte n;
 
   if(chh = getID(&rxbuff[1], &frame)) {
-    Serial.print("*");
-    Serial.print(chh);
-    Serial.print("\n");
+    sendString("*");
+    sendByte(chh);
+    sendString("\n");
     return;
   }
   if(Can.getMode() != MODE_NORMAL) {
-    Serial.print("*6\n");
+    sendString("*6\n");
   } else {
     frame.length=0;
     n = 5 + (5 * frame.eid); //Set to the first data char in buffer
     while(rxbuff[n] != '\n') {
       if(rxbuff[n+1]=='\n') { // Not an even number of data characters
-        Serial.print("*1\n");
+        sendString("*1\n");
         return;
       }
       if(frame.length == 8) {
-        Serial.print("*1\n");
+        sendString("*1\n");
         return;
       }
       
@@ -131,7 +166,7 @@ inline void writeFrame(void)
       chl = toupper(rxbuff[n+1]);
       if( ((chh<'0' || chh>'9') && (chh<'A' || chh>'F')) ||
           ((chl<'0' || chl>'9') && (chl<'A' || chl>'F'))) {
-            Serial.print("*1\n");
+            sendString("*1\n");
             return;
       }
       if(chh > '9') {//It's a character
@@ -148,9 +183,9 @@ inline void writeFrame(void)
       n+=2;
     }
     if(Can.writeFrame(frame)) {
-      Serial.print("*3\n");
+      sendString("*3\n");
     } else {  
-      Serial.print("w\n");
+      sendString("w\n");
     }
   }
 }
@@ -163,9 +198,9 @@ inline void writeFilter(void)
   byte buff[4];
   
   if(ch = getID(&rxbuff[3], &frame)) {
-    Serial.print("*");
-    Serial.print(ch);
-    Serial.print("\n");
+    sendString("*");
+    sendByte(ch);
+    sendString("\n");
     return;
   }
   mode = Can.getMode();
@@ -174,7 +209,7 @@ inline void writeFilter(void)
   }
   ch = rxbuff[1] - '0';
   if(ch > 5) {
-    Serial.print("*1\n");
+    sendString("*1\n");
     return;
   }
   if(ch < 3) reg = ch << 2;
@@ -195,7 +230,7 @@ inline void writeFilter(void)
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_NORMAL);
   }
-  Serial.print("f\n");
+  sendString("f\n");
 }
 
 inline void writeMask(void)
@@ -204,9 +239,9 @@ inline void writeMask(void)
   char ch;
   byte mode, reg;
   if(ch = getID(&rxbuff[3], &frame)) {
-    Serial.print("*");
-    Serial.print(ch);
-    Serial.print("\n");
+    sendString("*");
+    sendByte(ch);
+    sendString("\n");
     return;
   } 
   mode = Can.getMode();
@@ -216,7 +251,7 @@ inline void writeMask(void)
   if(rxbuff[1] == '0')      reg = REG_RXM0SIDH;
   else if(rxbuff[1] == '1') reg = REG_RXM1SIDH;
   else {
-    Serial.print("*1\n");
+    sendString("*1\n");
     return;
   }
   if(frame.eid) {
@@ -235,7 +270,7 @@ inline void writeMask(void)
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_NORMAL);
   }
-  Serial.print("m\n");
+  sendString("m\n");
 }
 
 /* Called if a full sentence has been received.  Determines
@@ -244,13 +279,13 @@ inline void cmdReceived(void)
 {
   if(rxbuff[0]=='O' && rxbuff[1] == '\n') {
     Can.setMode(MODE_NORMAL);
-    Serial.print("o\n");
+    sendString("o\n");
   } else if(rxbuff[0]=='C' && rxbuff[1] == '\n') {
     Can.setMode(MODE_CONFIG);
-    Serial.print("c\n");
+    sendString("c\n");
   } else if(rxbuff[0]=='K' && rxbuff[1] == '\n') {
     Can.sendCommand(CMD_RESET);
-    Serial.print("k\n");
+    sendString("k\n");
   } else if(rxbuff[0] == 'B') {
     setBitrate();
   } else if(rxbuff[0] == 'W') {
@@ -262,7 +297,7 @@ inline void cmdReceived(void)
   } else if(rxbuff[0] == 'H' && rxbuff[1] == '\n') {
     sendHelp();
   } else {
-    Serial.print("*1\n");
+    sendString("*1\n");
   }
 }  
 
@@ -271,16 +306,18 @@ void printFrame(CanFrame frame)
 {
   byte n;
   char str[9];
-  Serial.print("r");
+  sendString("r");
   if(frame.eid) sprintf(str, "%08lX", frame.id);
   else          sprintf(str, "%03X", frame.id); 
-  Serial.print(str);
-  Serial.print(":");
+  sendString(str);
+  sendString(":");
   for(n=0;n<frame.length;n++) {
-    if(frame.data[n]<0x10) Serial.print("0");
-    Serial.print(frame.data[n], HEX);
+    if(frame.data[n]<0x10) sendString("0");
+    sprintf(str, "%02X", frame.data[n]);
+    sendString(str);
+    //Serial.print(frame.data[n], HEX);
   }
-  Serial.print("\n");
+  sendString("\n");
 }
 
 
