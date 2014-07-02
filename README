@@ -41,6 +41,7 @@ Open Port           O
 Close Port          C
 Set Mask            M
 Set Filter          F
+Status              S
 MCP2515 Raw Message Z
 Help                H
 
@@ -122,6 +123,28 @@ Sends the data given over the SPI port and responds with the data that is read f
 the SPI port.  No assumptions, validation or other logic is applied to this data.
 This is for advanced users only and you should be familiar with how the MCP2515
 SPI communication works.
+
+* Status Command
+  host        S[x]<lf>
+  response    sdd...dd<lf> or a screenfull of information.
+
+Retrieve status from the interface.  The 'x' in the request determines the status
+entry to be read.  If it is absent then all the status is sent with human readable
+descriptions.
+
+The status codes are...
+  1    Frames Sent      32 bits
+  2    Frames Recieved  32 bits
+  3    Buffer Overflows 16 bits
+  4    Transmit Errors  8 bits
+  5    Receive Errors   8 bits
+  6    Error Flags      8 bits
+
+The first three are calculated in the sketch by the Arduino.  The first two are
+obvious, the buffer overflows represents the number of messages that have been
+missed because they came in on the CAN-BUS faster then we could get them out
+on the serial port.  The last three are read directly from the MCP2515 at the 
+time the command is recieved.
 
 * Help Command
   host        H<lf>

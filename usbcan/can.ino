@@ -55,6 +55,16 @@ void CAN::read(byte reg, byte *buff, byte count)
   digitalWrite(ss_pin, HIGH);
 }
 
+void CAN::bitmod(byte reg, byte mask, byte data)
+{
+  digitalWrite(ss_pin, LOW);
+  SPI.transfer(CMD_BITMOD);
+  SPI.transfer(reg);
+  SPI.transfer(mask);
+  SPI.transfer(data);
+  digitalWrite(ss_pin, HIGH);
+}  
+
 void CAN::sendCommand(byte command)
 {
   digitalWrite(ss_pin, LOW);

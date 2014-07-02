@@ -31,12 +31,16 @@
 #define CMD_RTS0     0x81
 #define CMD_RTS1     0x82
 #define CMD_RTS2     0x84
+#define CMD_BITMOD   0x05
 
 #define REG_CANCTRL   0x0F
 #define REG_CANSTAT   0x0E
 #define REG_CNF3      0x28
 #define REG_CNF2      0x29
 #define REG_CNF1      0x2A
+#define REG_CANINTE   0x2B
+#define REG_CANINTF   0x2C
+#define REG_EFLG      0x2D
 #define REG_TXB0CTRL  0x30
 #define REG_TXB1CTRL  0x40
 #define REG_TXB2CTRL  0x50
@@ -116,6 +120,7 @@ public:
   CAN(byte pin);
   void write(byte reg, byte *buff, byte count);
   void read(byte reg, byte *buff, byte count);
+  void bitmod(byte reg, byte mask, byte data);
   void sendCommand(byte command);
   void setBitRate(int bitrate);
   void setMode(byte mode);

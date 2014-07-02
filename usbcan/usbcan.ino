@@ -20,7 +20,7 @@
 /* If the sheild has a 16Mhz Oscillator comment the
    the following line.  This must come before the
    inclusion of "can.h".  See can.h for details */
-//#define CAN_MHZ 20
+#define CAN_MHZ 20
 /* This can be changed if the slave select output
    is a different pin than 10 */
 #define PIN_SS 10
@@ -34,17 +34,16 @@
 CAN Can((byte)PIN_SS);
 char rxbuff[RXBUFF_SIZE];
 byte rxbuffidx;
-char txbuff[TXBUFF_SIZE];
-byte txbuffidx;
-byte txbufflen;
-CanFrame canbuff[CANBUFF_SIZE];
-byte canidx;
-word id;
+//char txbuff[TXBUFF_SIZE];
+//byte txbuffidx;
+//byte txbufflen;
+//word id;
 
 byte buff[16];
+int err_overflow;
 
 //#define FULL_HELP 1
-char *helpString[] = {"CAN-FIXit USB to CAN Interface Adapter\n",
+const char *helpString[] = {"CAN-FIXit USB to CAN Interface Adapter\n",
                                "Version 1.0\n\n",
 #ifdef FULL_HELP
                                "  Command            Code\n",
@@ -61,20 +60,58 @@ char *helpString[] = {"CAN-FIXit USB to CAN Interface Adapter\n",
 #endif 
                                NULL};
 
-void sendString(char *str)
+// Circular Buffer for storing CAN Frames 
+class FrameBuffer
+{
+  private:
+    CanFrame buff[CANBUFF_SIZE];
+    byte start, count;
+  public:
+    FrameBuffer();
+    byte get(CanFrame *);
+    byte put(CanFrame);
+};
+
+FrameBuffer::FrameBuffer()
+{
+  count = start = 0x00;
+}
+
+byte FrameBuffer::get(CanFrame *result)
+{
+  /* If empty */
+  if(count==0) return 0xFF;
+  *result = buff[start];
+  start = (start+1) % CANBUFF_SIZE;
+  count--;
+  return 0;
+}
+
+byte FrameBuffer::put(CanFrame frame)
+{
+  /* Buffer Full */
+  if(count == CANBUFF_SIZE) return 0xFF;
+  buff[(start + count) % CANBUFF_SIZE] = frame;
+  count++;
+  return 0x00;
+}
+
+#define sendString(x) Serial.print((x))
+/*
+inline void sendString(const char *str)
 {
   int n;
   while(str[n] != 0) {
     Serial.write(str[n]);
     n++;
-    //TODO: Check for new CAN frame at every character
+  
   }
 }
+*/
 
 void sendByte(char ch)
 {
   Serial.write(ch);
-  //TODO: Check for new CAN frame at every character
 }  
 
                                
@@ -102,7 +139,7 @@ inline void setBitrate(void)
   } else if(strncmp(rxbuff, "B500\n", 5) == 0) {
     Can.setBitRate(500);
   } else if(strncmp(rxbuff, "B1000\n", 6) == 0) {
-    Can.setBitRate(500);
+    Can.setBitRate(1000);
   } else {
     sendString("*2\n");
     return;
@@ -141,7 +178,7 @@ inline void writeFrame(void)
   char chh, chl;
   byte n;
 
-  if(chh = getID(&rxbuff[1], &frame)) {
+  if((chh = getID(&rxbuff[1], &frame))) {
     sendString("*");
     sendByte(chh);
     sendString("\n");
@@ -197,7 +234,7 @@ inline void writeFilter(void)
   byte mode, reg;
   byte buff[4];
   
-  if(ch = getID(&rxbuff[3], &frame)) {
+  if((ch = getID(&rxbuff[3], &frame))) {
     sendString("*");
     sendByte(ch);
     sendString("\n");
@@ -238,7 +275,7 @@ inline void writeMask(void)
   CanFrame frame;
   char ch;
   byte mode, reg;
-  if(ch = getID(&rxbuff[3], &frame)) {
+  if((ch = getID(&rxbuff[3], &frame))) {
     sendString("*");
     sendByte(ch);
     sendString("\n");
@@ -308,10 +345,10 @@ void printFrame(CanFrame frame)
   char str[9];
   sendString("r");
   if(frame.eid) sprintf(str, "%08lX", frame.id);
-  else          sprintf(str, "%03X", frame.id); 
+  else          sprintf(str, "%03lX", frame.id); 
   sendString(str);
   sendString(":");
-  for(n=0;n<frame.length;n++) {
+  for(n=0; n<frame.length; n++) {
     if(frame.data[n]<0x10) sendString("0");
     sprintf(str, "%02X", frame.data[n]);
     sendString(str);
@@ -320,16 +357,20 @@ void printFrame(CanFrame frame)
   sendString("\n");
 }
 
+FrameBuffer framebuffer;
 
 void setup() {
   Serial.begin(115200);
   Can.sendCommand(CMD_RESET);
   Can.setBitRate(125);
+  buff[0]=0x03;
+  Can.write(REG_CANINTE, buff, 1);
+  attachInterrupt(0, isr, LOW);
 }
 
 void loop()
 {
-  byte result;
+  //byte result;
   CanFrame frame;
   
   if(Serial) {
@@ -344,19 +385,36 @@ void loop()
       if(rxbuffidx >= RXBUFF_SIZE) rxbuffidx = 0;
     }  
   }
-  /* Thgis is where we check to see if we have received a frame
-     on one of the Receive buffers.  */
-  if(result = Can.getRxStatus()) {
+  cli();
+  if(framebuffer.get(&frame)==0x00) {
+      sei();
+      printFrame(frame);
+  } else {
+      sei();
+  }
+  
+}
+
+void isr()
+{
+  CanFrame frame;
+  byte result;
+  if((result = Can.getRxStatus())) {
     if(result & 0x40) {
       frame = Can.readFrame(0);
-      printFrame(frame);
+      Can.bitmod(REG_CANINTF, 0x01, 0x00);
+      if(framebuffer.put(frame)) {
+        err_overflow++;
+      }
     }
     if(result & 0x80) {
       frame = Can.readFrame(1);
-      printFrame(frame);
+      Can.bitmod(REG_CANINTF, 0x02, 0x00);
+      if(framebuffer.put(frame)) {
+          err_overflow++;
+      }
     }
   }
 }
-
 
 
