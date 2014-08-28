@@ -20,7 +20,7 @@
 /* If the sheild has a 16Mhz Oscillator comment the
    the following line.  This must come before the
    inclusion of "can.h".  See can.h for details */
-#define CAN_MHZ 20
+//#define CAN_MHZ 20
 /* This can be changed if the slave select output
    is a different pin than 10 */
 #define PIN_SS 10
@@ -34,10 +34,6 @@
 CAN Can((byte)PIN_SS);
 char rxbuff[RXBUFF_SIZE];
 byte rxbuffidx;
-//char txbuff[TXBUFF_SIZE];
-//byte txbuffidx;
-//byte txbufflen;
-//word id;
 
 byte buff[16];
 int err_overflow;
@@ -150,10 +146,20 @@ inline void setBitrate(void)
   sendString("b\n");
 }
 
+/* Sends a reset message to the MCP2515
+ * and turns on the interrupt */
+void initialize(void)
+{
+  Can.sendCommand(CMD_RESET);
+  Can.setBitRate(125);
+  buff[0]=0x03;
+  Can.write(REG_CANINTE, buff, 1);
+}
+  
+
 /* Get's the ID from the string.  Returns 0x00 on
    success or the error character that should be
    sent after the '*' if failure */
-
 byte getID(char *buff, CanFrame *frame)
 {
   if(buff[3]==':' || buff[3]=='\n') { //Standard frame
@@ -302,13 +308,23 @@ inline void writeMask(void)
     buff[0] = frame.id>>3;
     Can.write(reg, buff, 2);
   }
-
   
   if(mode == MODE_NORMAL) {
     Can.setMode(MODE_NORMAL);
   }
   sendString("m\n");
 }
+
+inline void sendStatus(void)
+{
+  /* TODO: Figure out if there is a number at buff[1] and
+   *       deal with it. For now we print overloads */
+  Serial.print("Buffer Overflows:");
+  Serial.println(err_overflow);
+  //sendString("s\n");
+}
+
+
 
 /* Called if a full sentence has been received.  Determines
    what to do with the message */
@@ -321,7 +337,7 @@ inline void cmdReceived(void)
     Can.setMode(MODE_CONFIG);
     sendString("c\n");
   } else if(rxbuff[0]=='K' && rxbuff[1] == '\n') {
-    Can.sendCommand(CMD_RESET);
+    initialize();
     sendString("k\n");
   } else if(rxbuff[0] == 'B') {
     setBitrate();
@@ -331,6 +347,8 @@ inline void cmdReceived(void)
     writeFilter();
   } else if(rxbuff[0] == 'M') {
     writeMask();
+  } else if(rxbuff[0] =='S')  {
+    sendStatus();
   } else if(rxbuff[0] == 'H' && rxbuff[1] == '\n') {
     sendHelp();
   } else {
@@ -349,10 +367,9 @@ void printFrame(CanFrame frame)
   sendString(str);
   sendString(":");
   for(n=0; n<frame.length; n++) {
-    if(frame.data[n]<0x10) sendString("0");
+    //if(frame.data[n]<0x10) sendString("0");
     sprintf(str, "%02X", frame.data[n]);
     sendString(str);
-    //Serial.print(frame.data[n], HEX);
   }
   sendString("\n");
 }
@@ -361,16 +378,12 @@ FrameBuffer framebuffer;
 
 void setup() {
   Serial.begin(115200);
-  Can.sendCommand(CMD_RESET);
-  Can.setBitRate(125);
-  buff[0]=0x03;
-  Can.write(REG_CANINTE, buff, 1);
+  initialize();
   attachInterrupt(0, isr, LOW);
 }
 
 void loop()
 {
-  //byte result;
   CanFrame frame;
   
   if(Serial) {
